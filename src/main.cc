@@ -1,20 +1,27 @@
+#include "QueryParser.h"
 #include "Repl/Repl.h"
 #include <iostream>
 
 int main() {
-    Repl repl("PaneerDB");
+  std::cout << "Welcome!\n";
+  std::cout << "Made by Ojas Maheshwari\n\n";
 
-    std::cout << "Welcome!\n";
-    std::cout << "Made by Ojas Maheshwari\n\n";
+  Repl repl("PaneerDB");
+  QueryParser queryParser;
 
-	while (repl.running()) {
-		auto input = repl.input();
-		std::cout << input << '\n';
+  while (repl.running()) {
+    auto input = repl.input();
+    auto tokens = queryParser.tokenize(input);
 
-        if (input == "exit") {
-            repl.exit();
-        }
-	}
+    // print the tokens
+    for (const auto &token : tokens) {
+      std::cout << token.value << ' ' << token.getTypeName() << '\n';
+    }
 
-    std::cout << "\nBye!\n";
+    if (input == "exit") {
+      repl.exit();
+    }
+  }
+
+  std::cout << "\nBye!\n";
 }

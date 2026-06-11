@@ -6,26 +6,16 @@
 class Repl {
 
 public:
-	Repl();
+	Repl(const std::string &inputPrompt);
 	~Repl() = default;
 
-	void welcome();
 	std::string input();
-	
-	void bye(int signum);
-
 	bool running();
+    void exit();
 
 private:
-
-	static constexpr const char* m_WelcomeMessage = "MiniDB 1.0\n"
-	"By Ojas Maheshwari\n";
-
-	static constexpr const char* m_InputPrompt = "MiniDB> ";
-
-	static constexpr const char* m_ByeMessage = "\nBye!\n";
-
-	bool m_Running = false;
+	bool m_Running;
+    std::string m_InputPrompt;
 };
 
 

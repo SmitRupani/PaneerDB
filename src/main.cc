@@ -2,12 +2,19 @@
 #include <iostream>
 
 int main() {
-	Repl repl;
+    Repl repl("PaneerDB");
 
-	repl.welcome();
+    std::cout << "Welcome!\n";
+    std::cout << "Made by Ojas Maheshwari\n\n";
 
-	while (true) {
+	while (repl.running()) {
 		auto input = repl.input();
 		std::cout << input << '\n';
+
+        if (input == "exit") {
+            repl.exit();
+        }
 	}
+
+    std::cout << "\nBye!\n";
 }

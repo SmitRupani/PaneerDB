@@ -1,22 +1,16 @@
 #include "Repl.h"
-#include <csignal>
 #include <iostream>
 #include <string>
 
-Repl::Repl()
-	: m_Running(true)
+Repl::Repl(const std::string &inputPrompt)
+    : m_InputPrompt(inputPrompt)
 {
-	signal(SIGINT, Repl::bye);
-}
-
-void Repl::welcome()
-{
-	std::cout << m_WelcomeMessage << '\n';
+    m_Running = true;
 }
 
 std::string Repl::input()
 {
-	std::cout << m_InputPrompt;
+	std::cout << m_InputPrompt << '>';
 	
 	std::string input;
 	std::getline(std::cin, input);
@@ -24,13 +18,12 @@ std::string Repl::input()
 	return input;
 }
 
-void Repl::bye(int signum)
-{
-	m_Running = false;
-	std::cout << m_ByeMessage;
-}
-
 bool Repl::running()
 {
 	return m_Running;
+}
+
+void Repl::exit()
+{
+    m_Running = false;
 }

@@ -1,5 +1,5 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef TOKEN_H
+#define TOKEN_H
 
 #include <string>
 
@@ -19,6 +19,7 @@ enum class TokenType {
   LESS_THAN,
   LPAREN,
   RPAREN,
+  COMMA,
   END
 };
 
@@ -31,6 +32,7 @@ public:
   TokenType type;
 
   std::string getTypeName() const;
+  std::string getTypeName(TokenType typeA) const;
 };
 
 #endif

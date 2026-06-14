@@ -1,5 +1,7 @@
 #include "QueryParser.h"
-#include "types.h"
+#include "Expression.h"
+#include "token.h"
+#include <cassert>
 #include <cctype>
 #include <cstddef>
 #include <cstdio>
@@ -8,10 +10,8 @@
 #include <string>
 #include <vector>
 
-std::vector<Token> QueryParser::tokenize(const std::string &query) {
-  using std::isspace, std::isalpha;
-
-  std::vector<Token> tokens;
+void QueryParser::tokenize(const std::string &query) {
+  using std::isspace, std::isalpha, std::isdigit;
 
   size_t i = 0;
 
@@ -20,7 +20,7 @@ std::vector<Token> QueryParser::tokenize(const std::string &query) {
     while (i < query.size()) {
       if (isspace(query[i]) || query[i] == '<' || query[i] == '>' ||
           query[i] == '=' || query[i] == '(' || query[i] == ')' ||
-          query[i] == ';') {
+          query[i] == ';' || query[i] == ',') {
         break;
       }
 
@@ -48,17 +48,17 @@ std::vector<Token> QueryParser::tokenize(const std::string &query) {
       std::string word = getWord();
 
       if (word == "SELECT") {
-        tokens.emplace_back("SELECT", TokenType::SELECT);
+        m_Tokens.emplace_back("SELECT", TokenType::SELECT);
       } else if (word == "FROM") {
-        tokens.emplace_back("FROM", TokenType::FROM);
+        m_Tokens.emplace_back("FROM", TokenType::FROM);
       } else if (word == "WHERE") {
-        tokens.emplace_back("WHERE", TokenType::WHERE);
+        m_Tokens.emplace_back("WHERE", TokenType::WHERE);
       } else if (word == "OR") {
-        tokens.emplace_back("OR", TokenType::OR);
+        m_Tokens.emplace_back("OR", TokenType::OR);
       } else if (word == "AND") {
-        tokens.emplace_back("AND", TokenType::AND);
+        m_Tokens.emplace_back("AND", TokenType::AND);
       } else {
-        tokens.emplace_back(word, TokenType::IDENTIFIER);
+        m_Tokens.emplace_back(word, TokenType::IDENTIFIER);
       }
     } else if (c == '\"') {
       std::string word = getWord();
@@ -70,30 +70,32 @@ std::vector<Token> QueryParser::tokenize(const std::string &query) {
       }
 
       std::string literal = word.substr(1, word.size() - 2);
-      tokens.emplace_back(literal, TokenType::STRING_LITERAL);
-    } else if (std::isdigit(c)) {
+      m_Tokens.emplace_back(literal, TokenType::STRING_LITERAL);
+    } else if (isdigit(c)) {
       std::string word = getWord();
-      tokens.emplace_back(word, TokenType::NUMERIC_LITERAL);
+      m_Tokens.emplace_back(word, TokenType::NUMERIC_LITERAL);
     } else if (isspace(c)) {
       ++i;
     } else {
       if (c == '<') {
-        tokens.emplace_back("<", TokenType::LESS_THAN);
+        m_Tokens.emplace_back("<", TokenType::LESS_THAN);
         ++i;
       } else if (c == '>') {
-        tokens.emplace_back("<", TokenType::GREATER_THAN);
+        m_Tokens.emplace_back(">", TokenType::GREATER_THAN);
         ++i;
       } else if (c == '=') {
-        tokens.emplace_back("<", TokenType::EQUALS);
+        m_Tokens.emplace_back("=", TokenType::EQUALS);
         ++i;
       } else if (c == '(') {
-        tokens.emplace_back("<", TokenType::LPAREN);
+        m_Tokens.emplace_back("(", TokenType::LPAREN);
         ++i;
       } else if (c == ')') {
-        tokens.emplace_back("<", TokenType::RPAREN);
+        m_Tokens.emplace_back(")", TokenType::RPAREN);
         ++i;
+      } else if (c == ',') {
+        m_Tokens.emplace_back(",", TokenType::COMMA);
       } else if (c == ';') {
-        tokens.emplace_back(";", TokenType::END);
+        m_Tokens.emplace_back(";", TokenType::END);
         break;
       } else {
         std::string error = "[tokenizer] Unrecognized symbol (" +
@@ -105,9 +107,82 @@ std::vector<Token> QueryParser::tokenize(const std::string &query) {
     }
   }
 
-  if (tokens.back().type != TokenType::END) {
+  if (m_Tokens.back().type != TokenType::END) {
     throw std::runtime_error("[tokenizer] No semicolon at end of query");
   }
+}
 
-  return tokens;
+const Token &QueryParser::consume(TokenType type) {
+  assert(m_TokenPos < m_Tokens.size());
+
+  const Token &token = m_Tokens[m_TokenPos];
+
+  if (token.type != type) {
+    throw std::runtime_error(
+        "[Parser] Expected and actual token types do not match.\n \
+            Expected: " +
+        token.getTypeName(type) + '\n' + "Got: " + token.getTypeName());
+  }
+
+  ++m_TokenPos;
+
+  return token;
+}
+
+SelectStatement QueryParser::parseSelectStatement() {
+  consume(TokenType::SELECT);
+
+  std::vector<std::string> projection = parseProjection();
+
+  consume(TokenType::FROM);
+
+  std::string tableName = parseTableName();
+
+  consume(TokenType::WHERE);
+
+  Expression *filterExpression = parseFilterExpr();
+
+  return {.projection = projection,
+          .tableName = tableName,
+          .filter = filterExpression};
+}
+
+std::vector<std::string> QueryParser::parseProjection() {
+  std::vector<std::string> result;
+
+  while (m_Tokens[m_TokenPos].type == TokenType::IDENTIFIER &&
+         m_TokenPos + 1 < m_Tokens.size() &&
+         m_Tokens[m_TokenPos + 1].type == TokenType::COMMA) {
+    result.emplace_back(consume(TokenType::IDENTIFIER).value);
+
+    consume(TokenType::COMMA);
+  }
+
+  result.emplace_back(consume(TokenType::IDENTIFIER).value);
+
+  return result;
+}
+
+std::string QueryParser::parseTableName() {
+  return consume(TokenType::IDENTIFIER).value;
+}
+
+Expression *parseFilterExpr() {
+  // TODO: TO BE IMPLEMENTED
+  return nullptr;
+}
+
+QueryParser::ParseResult QueryParser::parse() {
+  if (m_Tokens.empty()) {
+    throw new std::runtime_error("[Parser] Nothing to parse");
+  }
+
+  Token &firstToken = m_Tokens[0];
+
+  if (m_Tokens[0].type == TokenType::SELECT) {
+    return parseSelectStatement();
+  }
+
+  throw std::runtime_error("[Parser] Invalid or unsupported query type - " +
+                           firstToken.value);
 }

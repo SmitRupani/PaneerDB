@@ -81,16 +81,16 @@ std::vector<Token> QueryParser::tokenize(const std::string &query) {
         tokens.emplace_back("<", TokenType::LESS_THAN);
         ++i;
       } else if (c == '>') {
-        tokens.emplace_back("<", TokenType::GREATER_THAN);
+        tokens.emplace_back(">", TokenType::GREATER_THAN);
         ++i;
       } else if (c == '=') {
-        tokens.emplace_back("<", TokenType::EQUALS);
+        tokens.emplace_back("=", TokenType::EQUALS);
         ++i;
       } else if (c == '(') {
-        tokens.emplace_back("<", TokenType::LPAREN);
+        tokens.emplace_back("(", TokenType::LPAREN);
         ++i;
       } else if (c == ')') {
-        tokens.emplace_back("<", TokenType::RPAREN);
+        tokens.emplace_back(")", TokenType::RPAREN);
         ++i;
       } else if (c == ';') {
         tokens.emplace_back(";", TokenType::END);
@@ -105,7 +105,7 @@ std::vector<Token> QueryParser::tokenize(const std::string &query) {
     }
   }
 
-  if (tokens.back().type != TokenType::END) {
+  if (tokens.empty() || tokens.back().type != TokenType::END) {
     throw std::runtime_error("[tokenizer] No semicolon at end of query");
   }
 

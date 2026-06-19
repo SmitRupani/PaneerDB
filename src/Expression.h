@@ -14,12 +14,6 @@ public:
   virtual Value solve() = 0;
 };
 
-struct SelectStatement {
-  std::vector<std::string> projection;
-  std::string tableName;
-  Expression *filter;
-};
-
 class LiteralExpression : public Expression {
 
 public:
@@ -63,6 +57,24 @@ class EqualityExpression : public BinaryExpression {
 public:
   EqualityExpression(Expression *leftA, Expression *rightA);
 
+  Value solve() override;
+};
+
+class OrExpression : public BinaryExpression {
+public:
+  OrExpression(Expression *leftA, Expression *rightA);
+  Value solve() override;
+};
+
+class GreaterExpression : public BinaryExpression {
+public:
+  GreaterExpression(Expression *leftA, Expression *rightA);
+  Value solve() override;
+};
+
+class LessExpression : public BinaryExpression {
+public:
+  LessExpression(Expression *leftA, Expression *rightA);
   Value solve() override;
 };
 

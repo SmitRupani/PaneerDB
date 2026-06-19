@@ -1,6 +1,7 @@
-#include "QueryParser.h"
-#include "Expression.h"
-#include "token.h"
+#include <QueryParser.h>
+#include <Expression.h>
+#include <token.h>
+#include <parsers/SelectStatementParser.h>
 #include <cassert>
 #include <cctype>
 #include <cstddef>
@@ -129,49 +130,6 @@ const Token &QueryParser::consume(TokenType type) {
   return token;
 }
 
-SelectStatement QueryParser::parseSelectStatement() {
-  consume(TokenType::SELECT);
-
-  std::vector<std::string> projection = parseProjection();
-
-  consume(TokenType::FROM);
-
-  std::string tableName = parseTableName();
-
-  consume(TokenType::WHERE);
-
-  Expression *filterExpression = parseFilterExpr();
-
-  return {.projection = projection,
-          .tableName = tableName,
-          .filter = filterExpression};
-}
-
-std::vector<std::string> QueryParser::parseProjection() {
-  std::vector<std::string> result;
-
-  while (m_Tokens[m_TokenPos].type == TokenType::IDENTIFIER &&
-         m_TokenPos + 1 < m_Tokens.size() &&
-         m_Tokens[m_TokenPos + 1].type == TokenType::COMMA) {
-    result.emplace_back(consume(TokenType::IDENTIFIER).value);
-
-    consume(TokenType::COMMA);
-  }
-
-  result.emplace_back(consume(TokenType::IDENTIFIER).value);
-
-  return result;
-}
-
-std::string QueryParser::parseTableName() {
-  return consume(TokenType::IDENTIFIER).value;
-}
-
-Expression *parseFilterExpr() {
-  // TODO: TO BE IMPLEMENTED
-  return nullptr;
-}
-
 QueryParser::ParseResult QueryParser::parse() {
   if (m_Tokens.empty()) {
     throw new std::runtime_error("[Parser] Nothing to parse");
@@ -180,7 +138,8 @@ QueryParser::ParseResult QueryParser::parse() {
   Token &firstToken = m_Tokens[0];
 
   if (m_Tokens[0].type == TokenType::SELECT) {
-    return parseSelectStatement();
+      SelectStatementParser parser(m_Tokens);
+      return parser.parse();
   }
 
   throw std::runtime_error("[Parser] Invalid or unsupported query type - " +

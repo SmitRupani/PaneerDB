@@ -1,8 +1,9 @@
 #ifndef QUERY_PARSER_H
 #define QUERY_PARSER_H
 
-#include "Expression.h"
-#include "token.h"
+#include <statements/SelectStatement.h>
+#include <Expression.h>
+#include <token.h>
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -15,9 +16,8 @@ public:
 
   void tokenize(const std::string &query);
 
-  typedef SelectStatement ParseResult;
+  typedef std::variant<SelectStatement> ParseResult;
 
-  // TODO: This should be a variant of different statements
   ParseResult parse();
 
 private:
@@ -25,13 +25,6 @@ private:
   std::vector<Token> m_Tokens;
 
   const Token &consume(TokenType type);
-
-  SelectStatement parseSelectStatement();
-
-  // Specific parsers
-  std::vector<std::string> parseProjection();
-  std::string parseTableName();
-  Expression *parseFilterExpr();
 };
 
 #endif

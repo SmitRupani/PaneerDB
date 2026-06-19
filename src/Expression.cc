@@ -1,4 +1,4 @@
-#include "Expression.h"
+#include <Expression.h>
 #include <cassert>
 #include <stdexcept>
 #include <string>
@@ -80,4 +80,81 @@ IdentifierExpression::IdentifierExpression(const std::string &columnNameA)
 Value IdentifierExpression::solve() {
   // TODO: To be implemented
   return "SHAHI PANEER > KADAHI PANEER";
+}
+
+OrExpression::OrExpression(Expression *leftA, Expression *rightA)
+    : BinaryExpression(leftA, rightA) {}
+
+Value OrExpression::solve() {
+  auto leftResult = left->solve();
+  auto rightResult = right->solve();
+
+  auto isTruthy = [](const Value &result) -> bool {
+    return std::visit(
+        [](const auto &v) {
+          using T = std::decay_t<decltype(v)>;
+          if constexpr (std::is_same_v<T, bool>) {
+            return v;
+          } else if constexpr (std::is_same_v<T, std::string>) {
+            return !v.empty();
+          } else if constexpr (std::is_same_v<T, int>) {
+            return v > 0;
+          }
+        },
+        result);
+  };
+
+  if (isTruthy(leftResult))
+    return true;
+  return isTruthy(rightResult);
+}
+
+GreaterExpression::GreaterExpression(Expression *leftA, Expression *rightA)
+    : BinaryExpression(leftA, rightA) {}
+
+Value GreaterExpression::solve() {
+  auto l = left->solve();
+  auto r = right->solve();
+  if (l.index() != r.index()) {
+    throw std::runtime_error("[Parser] Comparison type mismatch");
+  }
+  return std::visit(
+      [](const auto &lv, const auto &rv) -> Value {
+        using T1 = std::decay_t<decltype(lv)>;
+        using T2 = std::decay_t<decltype(rv)>;
+        if constexpr (std::is_same_v<T1, int> && std::is_same_v<T2, int>) {
+          return lv > rv;
+        } else if constexpr (std::is_same_v<T1, std::string> &&
+                             std::is_same_v<T2, std::string>) {
+          return lv > rv;
+        } else {
+          throw std::runtime_error("[Parser] Unsupported > operand types");
+        }
+      },
+      l, r);
+}
+
+LessExpression::LessExpression(Expression *leftA, Expression *rightA)
+    : BinaryExpression(leftA, rightA) {}
+
+Value LessExpression::solve() {
+  auto l = left->solve();
+  auto r = right->solve();
+  if (l.index() != r.index()) {
+    throw std::runtime_error("[Parser] Comparison type mismatch");
+  }
+  return std::visit(
+      [](const auto &lv, const auto &rv) -> Value {
+        using T1 = std::decay_t<decltype(lv)>;
+        using T2 = std::decay_t<decltype(rv)>;
+        if constexpr (std::is_same_v<T1, int> && std::is_same_v<T2, int>) {
+          return lv < rv;
+        } else if constexpr (std::is_same_v<T1, std::string> &&
+                             std::is_same_v<T2, std::string>) {
+          return lv < rv;
+        } else {
+          throw std::runtime_error("[Parser] Unsupported < operand types");
+        }
+      },
+      l, r);
 }

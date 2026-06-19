@@ -6,11 +6,17 @@ project(PaneerDB)
 set(PROJECT_SOURCES
     src/main.cc
     src/Repl/Repl.cc
-    src/types.cc
+    src/token.cc
     src/QueryParser.cc
+    src/parsers/StatementParser.cc
+    src/parsers/SelectStatementParser.cc
+    src/statements/SelectStatement.cc
+    src/Expression.cc
 )
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE src)
 
 # ClockSweep test
 

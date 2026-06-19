@@ -1,4 +1,4 @@
-#include "token.h"
+#include <token.h>
 
 Token::Token(const std::string &valueA, TokenType typeA)
     : value(valueA), type(typeA) {}

@@ -1,6 +1,7 @@
 #include "QueryParser.h"
 #include "Repl/Repl.h"
 #include <iostream>
+#include <variant>
 
 int main() {
   std::cout << "Welcome!\n";
@@ -11,11 +12,11 @@ int main() {
 
   while (repl.running()) {
     auto input = repl.input();
-    auto tokens = queryParser.tokenize(input);
+    queryParser.tokenize(input);
 
-    // print the tokens
-    for (const auto &token : tokens) {
-      std::cout << token.value << ' ' << token.getTypeName() << '\n';
+    auto parseResult = queryParser.parse();
+    if (auto* str = std::get_if<SelectStatement>(&parseResult)) {
+      (*str).print();
     }
 
     if (input == "exit") {

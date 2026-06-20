@@ -4,6 +4,7 @@
 #include <parsers/SelectStatementParser.h>
 #include <parsers/CreateDatabaseStatementParser.h>
 #include <parsers/UseDatabaseStatementParser.h>
+#include <parsers/CreateTableStatementParser.h>
 #include <cassert>
 #include <cctype>
 #include <cstddef>
@@ -66,6 +67,8 @@ void QueryParser::tokenize(const std::string &query) {
         m_Tokens.emplace_back("USE", TokenType::USE);
       } else if (word == "DATABASE") {
         m_Tokens.emplace_back("DATABASE", TokenType::DATABASE);
+      } else if (word == "TABLE") {
+        m_Tokens.emplace_back("TABLE", TokenType::TABLE);
       } else {
         m_Tokens.emplace_back(word, TokenType::IDENTIFIER);
       }
@@ -134,8 +137,13 @@ Statement* QueryParser::parse() {
     }
 
     if (m_Tokens[0].type == TokenType::CREATE) {
-      CreateDatabaseStatementParser parser(m_Tokens);
-      return parser.parse();
+      if (m_Tokens.size() > 1 && m_Tokens[1].type == TokenType::DATABASE) {
+        CreateDatabaseStatementParser parser(m_Tokens);
+        return parser.parse();
+      } else if (m_Tokens.size() > 1 && m_Tokens[1].type == TokenType::TABLE) {
+        CreateTableStatementParser parser(m_Tokens);
+        return parser.parse();
+      }
     }
 
     if (m_Tokens[0].type == TokenType::USE) {

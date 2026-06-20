@@ -12,6 +12,7 @@ enum class TokenType {
   CREATE,
   USE,
   DATABASE,
+  TABLE,
 
   IDENTIFIER,
   STRING_LITERAL,

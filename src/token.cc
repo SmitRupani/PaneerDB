@@ -29,6 +29,9 @@ std::string Token::getTypeName() const {
   case TokenType::DATABASE:
     return "DATABASE";
 
+  case TokenType::TABLE:
+    return "TABLE";
+
   case TokenType::IDENTIFIER:
     return "IDENTIFIER";
 
@@ -80,6 +83,9 @@ std::string Token::getTypeName(TokenType typeA) const {
 
   case TokenType::CREATE:
     return "CREATE";
+
+  case TokenType::TABLE:
+    return "TABLE";
 
   case TokenType::USE:
     return "USE";

@@ -14,6 +14,14 @@ enum class TokenType {
   DATABASE,
   TABLE,
 
+  INTEGER,
+  VARCHAR,
+  PRIMARY,
+  KEY,
+  NOT,
+  NULL_KW,
+  UNIQUE,
+
   IDENTIFIER,
   STRING_LITERAL,
   NUMERIC_LITERAL,

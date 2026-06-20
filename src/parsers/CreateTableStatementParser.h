@@ -13,6 +13,9 @@ public:
   ~CreateTableStatementParser() override = default;
 
   CreateTableStatement* parse();
+
+private:
+  ColumnDefinition parseColumnDefinition();
 };
 
 #endif

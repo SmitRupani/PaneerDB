@@ -14,6 +14,7 @@
 #include <string>
 #include <token.h>
 #include <vector>
+#include "statements/DotTablesStatement.h"
 
 void QueryParser::tokenize(const std::string &query) {
   using std::isspace, std::isalpha, std::isdigit;
@@ -135,6 +136,17 @@ void QueryParser::tokenize(const std::string &query) {
       } else if (c == ';') {
         m_Tokens.emplace_back(";", TokenType::END);
         break;
+      } else if (c == '.') {
+        std::string word;
+        while (i < query.size() && !isspace(query[i]) && query[i] != ';') {
+          word += query[i];
+          ++i;
+        }
+        if (word == ".tables") {
+          m_Tokens.emplace_back(".tables", TokenType::DOT_TABLES);
+        } else {
+          throw std::runtime_error("[tokenizer] Unrecognized dot command: " + word);
+        }
       } else {
         std::string error = "[tokenizer] Unrecognized symbol (" +
                             std::string(1, c) + ") CODE " +
@@ -187,6 +199,10 @@ Statement *QueryParser::parse() {
   if (m_Tokens[0].type == TokenType::INSERT) {
     InsertStatementParser parser(m_Tokens);
     return parser.parse();
+  }
+
+  if (m_Tokens[0].type == TokenType::DOT_TABLES) {
+    return new DotTablesStatement();
   }
 
   throw std::runtime_error("[Parser] Invalid or unsupported query type - " +

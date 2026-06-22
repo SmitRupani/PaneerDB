@@ -50,9 +50,6 @@ Catalog::Catalog(BufferPoolManager *bpm) : bpm(bpm) {
       Schema *schema = Schema::deserialize(schemaData);
 
       tables[tableName] = schema;
-
-      std::cout << "[Catalog] Loaded table '" << tableName << "' from disk:\n";
-      schema->print();
     }
 
     bpm->unpinPage(CATALOG_PAGE_ID, false);
@@ -100,7 +97,6 @@ bool Catalog::createTable(const std::string &tableName, const Schema &schema) {
   std::string schemaStr = schema.serialize();
   tables[tableName] = Schema::deserialize(schemaStr);
 
-  std::cout << "[Catalog] Created table '" << tableName << "'.\n";
   return true;
 }
 
@@ -109,4 +105,14 @@ Schema *Catalog::getTable(const std::string &tableName) {
     return tables[tableName];
   }
   return nullptr;
+}
+
+void Catalog::showTables() const {
+  if (tables.empty()) {
+    std::cout << "No tables found in the database.\n";
+    return;
+  }
+  for (const auto &pair : tables) {
+    std::cout << pair.first << "\n";
+  }
 }

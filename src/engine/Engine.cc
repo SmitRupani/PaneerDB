@@ -57,6 +57,14 @@ void Engine::execute(Statement* statement) {
       catalog->createTable(createTableStmt->tableName, schema);
       break;
     }
+    case Statement::StatementType::DOT_TABLES: {
+      if (!active) {
+        std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
+        break;
+      }
+      catalog->showTables();
+      break;
+    }
     default:
       // Other statement types will be handled here later
       break;

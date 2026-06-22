@@ -35,6 +35,7 @@ enum class TokenType {
   LPAREN,
   RPAREN,
   COMMA,
+  DOT_TABLES,
   END
 };
 

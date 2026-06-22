@@ -13,6 +13,7 @@ public:
 
   bool createTable(const std::string& tableName, const Schema& schema);
   Schema* getTable(const std::string& tableName);
+  void showTables() const;
 
   static constexpr page_id_t CATALOG_PAGE_ID = 1;
 

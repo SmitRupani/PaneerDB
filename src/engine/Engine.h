@@ -21,6 +21,8 @@ public:
     std::string getActiveDatabase() const;
 
 private:
+    void executeInsert(class InsertStatement* stmt);
+
     bool active;
     std::string activeDbName;
     

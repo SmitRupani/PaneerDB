@@ -15,6 +15,7 @@
 #include <token.h>
 #include <vector>
 #include "statements/DotTablesStatement.h"
+#include "parsers/DescribeStatementParser.h"
 
 void QueryParser::tokenize(const std::string &query) {
   using std::isspace, std::isalpha, std::isdigit;
@@ -81,6 +82,8 @@ void QueryParser::tokenize(const std::string &query) {
         m_Tokens.emplace_back("INTO", TokenType::INTO);
       } else if (upperWord == "VALUES") {
         m_Tokens.emplace_back("VALUES", TokenType::VALUES);
+      } else if (upperWord == "DESC" || upperWord == "DESCRIBE") {
+        m_Tokens.emplace_back("DESC", TokenType::DESC);
       } else if (upperWord == "INTEGER" || upperWord == "INT") {
         m_Tokens.emplace_back("INTEGER", TokenType::INTEGER);
       } else if (upperWord == "VARCHAR") {
@@ -203,6 +206,11 @@ Statement *QueryParser::parse() {
 
   if (m_Tokens[0].type == TokenType::DOT_TABLES) {
     return new DotTablesStatement();
+  }
+
+  if (m_Tokens[0].type == TokenType::DESC) {
+    DescribeStatementParser parser(m_Tokens);
+    return parser.parse();
   }
 
   throw std::runtime_error("[Parser] Invalid or unsupported query type - " +

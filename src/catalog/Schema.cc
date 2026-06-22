@@ -3,7 +3,7 @@
 #include <utility>
 #include <cstdint>
 
-Schema::Schema(std::vector<Column*> columnsA) : columns(std::move(columnsA)) {}
+Schema::Schema(std::vector<Column*> columnsA, page_id_t firstPageIdA) : columns(std::move(columnsA)), firstPageId(firstPageIdA) {}
 
 Schema::~Schema() {
   for (auto* col : columns) {
@@ -11,7 +11,7 @@ Schema::~Schema() {
   }
 }
 
-Schema::Schema(Schema&& other) noexcept : columns(std::move(other.columns)) {
+Schema::Schema(Schema&& other) noexcept : columns(std::move(other.columns)), firstPageId(other.firstPageId) {
   other.columns.clear();
 }
 
@@ -21,6 +21,7 @@ Schema& Schema::operator=(Schema&& other) noexcept {
       delete col;
     }
     columns = std::move(other.columns);
+    firstPageId = other.firstPageId;
     other.columns.clear();
   }
   return *this;
@@ -28,6 +29,10 @@ Schema& Schema::operator=(Schema&& other) noexcept {
 
 std::string Schema::serialize() const {
   std::string buf;
+  
+  // Serialize firstPageId
+  buf.append(reinterpret_cast<const char*>(&firstPageId), sizeof(firstPageId));
+  
   uint16_t numColumns = columns.size();
   buf.append(reinterpret_cast<const char*>(&numColumns), sizeof(numColumns));
 
@@ -41,6 +46,11 @@ std::string Schema::serialize() const {
 
 Schema* Schema::deserialize(const std::string& data) {
   size_t offset = 0;
+  
+  page_id_t firstPageId;
+  std::memcpy(&firstPageId, data.data() + offset, sizeof(firstPageId));
+  offset += sizeof(firstPageId);
+  
   uint16_t numColumns;
   std::memcpy(&numColumns, data.data() + offset, sizeof(numColumns));
   offset += sizeof(numColumns);
@@ -51,7 +61,7 @@ Schema* Schema::deserialize(const std::string& data) {
     columns.push_back(col);
   }
 
-  return new Schema(std::move(columns));
+  return new Schema(std::move(columns), firstPageId);
 }
 
 void Schema::print() const {

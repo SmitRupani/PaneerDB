@@ -11,7 +11,7 @@ public:
   Catalog(BufferPoolManager* bpm);
   ~Catalog();
 
-  bool createTable(const std::string& tableName, const Schema& schema);
+  bool createTable(const std::string& tableName, Schema& schema);
   Schema* getTable(const std::string& tableName);
   void showTables() const;
 

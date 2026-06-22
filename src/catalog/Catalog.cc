@@ -62,11 +62,24 @@ Catalog::~Catalog() {
   }
 }
 
-bool Catalog::createTable(const std::string &tableName, const Schema &schema) {
+bool Catalog::createTable(const std::string &tableName, Schema &schema) {
   if (tables.find(tableName) != tables.end()) {
     std::cerr << "Table '" << tableName << "' already exists.\n";
     return false;
   }
+
+  // Allocate first page for table
+  page_id_t firstPageId;
+  Page *firstPage = bpm->newPage(&firstPageId);
+  if (!firstPage) {
+    std::cerr << "Error: Could not allocate first page for table\n";
+    return false;
+  }
+  SlottedPage spFirst(firstPage);
+  spFirst.init();
+  bpm->unpinPage(firstPageId, true);
+
+  schema.firstPageId = firstPageId;
 
   Page *catalogPage = bpm->fetchPage(CATALOG_PAGE_ID);
   if (!catalogPage) {

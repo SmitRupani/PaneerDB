@@ -22,6 +22,7 @@ set(PROJECT_SOURCES
     src/parsers/CreateTableStatementParser.cc
     src/parsers/UseDatabaseStatementParser.cc
     src/parsers/InsertStatementParser.cc
+    src/parsers/DescribeStatementParser.cc
 
     src/statements/SelectStatement.cc
     src/statements/CreateDatabaseStatement.cc

@@ -9,9 +9,10 @@
 // Layout:
 // [Header] -> [Slots] -> ... free space ... <- [Tuples]
 // 
-// Header Layout (4 bytes):
+// Header Layout (8 bytes):
 // - uint16_t freeSpacePointer (offset to where the next tuple can be written backwards)
 // - uint16_t slotCount (number of slots currently in the slot array)
+// - int32_t nextPageId (ID of the next page in the linked list, or -1 if none)
 //
 // Slot Layout (4 bytes per slot):
 // - uint16_t tupleOffset
@@ -43,6 +44,9 @@ public:
     // Gets the amount of contiguous free space in the middle of the page
     uint16_t getFreeSpace() const;
 
+    page_id_t getNextPageId() const;
+    void setNextPageId(page_id_t pageId);
+
     uint16_t getSlotCount() const;
 
 private:
@@ -59,7 +63,8 @@ private:
 
     static constexpr size_t FREE_SPACE_OFFSET = 0;
     static constexpr size_t SLOT_COUNT_OFFSET = 2;
-    static constexpr size_t HEADER_SIZE = 4;
+    static constexpr size_t NEXT_PAGE_OFFSET = 4;
+    static constexpr size_t HEADER_SIZE = 8;
     static constexpr size_t SLOT_SIZE = sizeof(Slot);
 };
 

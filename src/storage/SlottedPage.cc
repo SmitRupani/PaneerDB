@@ -6,6 +6,7 @@ SlottedPage::SlottedPage(Page* page) : page_(page), data_(page->getData()) {}
 void SlottedPage::init() {
     setFreeSpacePointer(PAGE_SIZE);
     setSlotCount(0);
+    setNextPageId(-1);
 }
 
 uint16_t SlottedPage::getFreeSpacePointer() const {
@@ -26,6 +27,16 @@ uint16_t SlottedPage::getSlotCount() const {
 
 void SlottedPage::setSlotCount(uint16_t count) {
     std::memcpy(data_ + SLOT_COUNT_OFFSET, &count, sizeof(uint16_t));
+}
+
+page_id_t SlottedPage::getNextPageId() const {
+    page_id_t pageId;
+    std::memcpy(&pageId, data_ + NEXT_PAGE_OFFSET, sizeof(page_id_t));
+    return pageId;
+}
+
+void SlottedPage::setNextPageId(page_id_t pageId) {
+    std::memcpy(data_ + NEXT_PAGE_OFFSET, &pageId, sizeof(page_id_t));
 }
 
 Slot SlottedPage::getSlot(slot_id_t slotId) const {

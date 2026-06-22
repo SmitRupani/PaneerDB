@@ -3,7 +3,6 @@
 
 #include <string>
 #include <variant>
-#include <vector>
 
 typedef std::variant<std::string, int, bool> Value;
 

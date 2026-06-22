@@ -9,6 +9,7 @@ set(PROJECT_SOURCES
     src/token.cc
     src/QueryParser.cc
     src/Expression.cc
+    src/engine/Engine.cc
 
     src/parsers/StatementParser.cc
     src/parsers/SelectStatementParser.cc

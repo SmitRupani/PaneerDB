@@ -37,6 +37,7 @@ public:
 class BinaryExpression : public Expression {
 
 public:
+  ~BinaryExpression() override;
   Expression *left;
   Expression *right;
 

@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <parsers/CreateDatabaseStatementParser.h>
 #include <parsers/CreateTableStatementParser.h>
+#include <parsers/InsertStatementParser.h>
 #include <parsers/SelectStatementParser.h>
 #include <parsers/UseDatabaseStatementParser.h>
 #include <stdexcept>
@@ -73,6 +74,12 @@ void QueryParser::tokenize(const std::string &query) {
         m_Tokens.emplace_back("DATABASE", TokenType::DATABASE);
       } else if (upperWord == "TABLE") {
         m_Tokens.emplace_back("TABLE", TokenType::TABLE);
+      } else if (upperWord == "INSERT") {
+        m_Tokens.emplace_back("INSERT", TokenType::INSERT);
+      } else if (upperWord == "INTO") {
+        m_Tokens.emplace_back("INTO", TokenType::INTO);
+      } else if (upperWord == "VALUES") {
+        m_Tokens.emplace_back("VALUES", TokenType::VALUES);
       } else if (upperWord == "INTEGER" || upperWord == "INT") {
         m_Tokens.emplace_back("INTEGER", TokenType::INTEGER);
       } else if (upperWord == "VARCHAR") {
@@ -174,6 +181,11 @@ Statement *QueryParser::parse() {
 
   if (m_Tokens[0].type == TokenType::USE) {
     UseDatabaseStatementParser parser(m_Tokens);
+    return parser.parse();
+  }
+
+  if (m_Tokens[0].type == TokenType::INSERT) {
+    InsertStatementParser parser(m_Tokens);
     return parser.parse();
   }
 

@@ -9,6 +9,11 @@
 BinaryExpression::BinaryExpression(Expression *leftA, Expression *rightA)
     : left(leftA), right(rightA) {}
 
+BinaryExpression::~BinaryExpression() {
+  delete left;
+  delete right;
+}
+
 AndExpression::AndExpression(Expression *leftA, Expression *rightA)
     : BinaryExpression(leftA, rightA) {}
 

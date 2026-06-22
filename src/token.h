@@ -13,6 +13,9 @@ enum class TokenType {
   USE,
   DATABASE,
   TABLE,
+  INSERT,
+  INTO,
+  VALUES,
 
   INTEGER,
   VARCHAR,

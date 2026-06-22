@@ -2,21 +2,19 @@
 #define CREATE_TABLE_STATEMENT_PARSER_H
 
 #include <parsers/StatementParser.h>
-#include <statements/CreateTableStatement.h>
 #include <statements/Column.h>
+#include <statements/CreateTableStatement.h>
 #include <token.h>
-#include <string>
-#include <vector>
 
 class CreateTableStatementParser : public StatementParser {
 public:
   explicit CreateTableStatementParser(std::vector<Token> &tokens);
   ~CreateTableStatementParser() override = default;
 
-  CreateTableStatement* parse();
+  CreateTableStatement *parse();
 
 private:
-  Column* parseColumnDefinition();
+  Column *parseColumnDefinition();
 };
 
 #endif

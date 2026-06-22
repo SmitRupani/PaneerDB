@@ -34,6 +34,15 @@ std::string Token::getTypeName() const
   case TokenType::TABLE:
     return "TABLE";
 
+  case TokenType::INSERT:
+    return "INSERT";
+
+  case TokenType::INTO:
+    return "INTO";
+
+  case TokenType::VALUES:
+    return "VALUES";
+
   case TokenType::IDENTIFIER:
     return "IDENTIFIER";
 
@@ -90,6 +99,15 @@ std::string Token::getTypeName(TokenType typeA) const
 
   case TokenType::TABLE:
     return "TABLE";
+
+  case TokenType::INSERT:
+    return "INSERT";
+
+  case TokenType::INTO:
+    return "INTO";
+
+  case TokenType::VALUES:
+    return "VALUES";
 
   case TokenType::USE:
     return "USE";

@@ -12,6 +12,7 @@ set(PROJECT_SOURCES
     src/engine/Engine.cc
     src/DiskManager/DiskManager.cc
     src/storage/SlottedPage.cc
+    src/storage/BufferPoolManager.cc
 
     src/parsers/StatementParser.cc
     src/parsers/SelectStatementParser.cc

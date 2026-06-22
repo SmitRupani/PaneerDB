@@ -9,21 +9,21 @@ public:
     Page() { resetMemory(); }
     ~Page() = default;
 
-    inline char* getData() { return data_; }
-    inline page_id_t getPageId() const { return page_id_; }
-    inline int getPinCount() const { return pin_count_; }
-    inline bool isDirty() const { return is_dirty_; }
+    inline char* getData() { return data; }
+    inline page_id_t getPageId() const { return pageId; }
+    inline int getPinCount() const { return pinCount; }
+    inline bool isDirty() const { return dirty; }
 
 protected:
     friend class BufferPoolManager;
     friend class SlottedPage;
 
-    inline void resetMemory() { std::memset(data_, 0, PAGE_SIZE); }
+    inline void resetMemory() { std::memset(data, 0, PAGE_SIZE); }
 
-    char data_[PAGE_SIZE]{};
-    page_id_t page_id_ = -1; // -1 represents an invalid or unallocated page
-    int pin_count_ = 0;
-    bool is_dirty_ = false;
+    char data[PAGE_SIZE]{};
+    page_id_t pageId = -1; // -1 represents an invalid or unallocated page
+    int pinCount = 0;
+    bool dirty = false;
 };
 
 #endif // PAGE_H

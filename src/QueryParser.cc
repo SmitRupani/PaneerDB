@@ -1,17 +1,17 @@
-#include <QueryParser.h>
 #include <Expression.h>
-#include <token.h>
-#include <parsers/SelectStatementParser.h>
-#include <parsers/CreateDatabaseStatementParser.h>
-#include <parsers/UseDatabaseStatementParser.h>
-#include <parsers/CreateTableStatementParser.h>
+#include <QueryParser.h>
 #include <cassert>
 #include <cctype>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <parsers/CreateDatabaseStatementParser.h>
+#include <parsers/CreateTableStatementParser.h>
+#include <parsers/SelectStatementParser.h>
+#include <parsers/UseDatabaseStatementParser.h>
 #include <stdexcept>
 #include <string>
+#include <token.h>
 #include <vector>
 
 void QueryParser::tokenize(const std::string &query) {
@@ -50,38 +50,42 @@ void QueryParser::tokenize(const std::string &query) {
       // Likely a SQL keyword | string literal | IDENTIFIER
 
       std::string word = getWord();
+      std::string upperWord = word;
+      for (char &ch : upperWord) {
+        ch = std::toupper(static_cast<unsigned char>(ch));
+      }
 
-      if (word == "SELECT") {
+      if (upperWord == "SELECT") {
         m_Tokens.emplace_back("SELECT", TokenType::SELECT);
-      } else if (word == "FROM") {
+      } else if (upperWord == "FROM") {
         m_Tokens.emplace_back("FROM", TokenType::FROM);
-      } else if (word == "WHERE") {
+      } else if (upperWord == "WHERE") {
         m_Tokens.emplace_back("WHERE", TokenType::WHERE);
-      } else if (word == "OR") {
+      } else if (upperWord == "OR") {
         m_Tokens.emplace_back("OR", TokenType::OR);
-      } else if (word == "AND") {
+      } else if (upperWord == "AND") {
         m_Tokens.emplace_back("AND", TokenType::AND);
-      } else if (word == "CREATE") {
+      } else if (upperWord == "CREATE") {
         m_Tokens.emplace_back("CREATE", TokenType::CREATE);
-      } else if (word == "USE") {
+      } else if (upperWord == "USE") {
         m_Tokens.emplace_back("USE", TokenType::USE);
-      } else if (word == "DATABASE") {
+      } else if (upperWord == "DATABASE") {
         m_Tokens.emplace_back("DATABASE", TokenType::DATABASE);
-      } else if (word == "TABLE") {
+      } else if (upperWord == "TABLE") {
         m_Tokens.emplace_back("TABLE", TokenType::TABLE);
-      } else if (word == "INTEGER") {
+      } else if (upperWord == "INTEGER") {
         m_Tokens.emplace_back("INTEGER", TokenType::INTEGER);
-      } else if (word == "VARCHAR") {
+      } else if (upperWord == "VARCHAR") {
         m_Tokens.emplace_back("VARCHAR", TokenType::VARCHAR);
-      } else if (word == "PRIMARY") {
+      } else if (upperWord == "PRIMARY") {
         m_Tokens.emplace_back("PRIMARY", TokenType::PRIMARY);
-      } else if (word == "KEY") {
+      } else if (upperWord == "KEY") {
         m_Tokens.emplace_back("KEY", TokenType::KEY);
-      } else if (word == "NOT") {
+      } else if (upperWord == "NOT") {
         m_Tokens.emplace_back("NOT", TokenType::NOT);
-      } else if (word == "NULL") {
+      } else if (upperWord == "NULL") {
         m_Tokens.emplace_back("NULL", TokenType::NULL_KW);
-      } else if (word == "UNIQUE") {
+      } else if (upperWord == "UNIQUE") {
         m_Tokens.emplace_back("UNIQUE", TokenType::UNIQUE);
       } else {
         m_Tokens.emplace_back(word, TokenType::IDENTIFIER);
@@ -139,34 +143,35 @@ void QueryParser::tokenize(const std::string &query) {
   }
 }
 
-Statement* QueryParser::parse() {
+Statement *QueryParser::parse() {
   if (m_Tokens.empty()) {
     throw new std::runtime_error("[Parser] Nothing to parse");
   }
 
   Token &firstToken = m_Tokens[0];
 
-    if (m_Tokens[0].type == TokenType::SELECT) {
-      SelectStatementParser parser(m_Tokens);
-      return parser.parse();
-    }
+  if (m_Tokens[0].type == TokenType::SELECT) {
+    SelectStatementParser parser(m_Tokens);
+    return parser.parse();
+  }
 
-    if (m_Tokens[0].type == TokenType::CREATE) {
-      if (m_Tokens.size() > 1 && m_Tokens[1].type == TokenType::DATABASE) {
-        CreateDatabaseStatementParser parser(m_Tokens);
-        return parser.parse();
-      } else if (m_Tokens.size() > 1 && m_Tokens[1].type == TokenType::TABLE) {
-        CreateTableStatementParser parser(m_Tokens);
-        return parser.parse();
-      } else {
-        throw std::runtime_error("[Parser] Invalid CREATE statement - expected DATABASE or TABLE keyword");
-      }
-    }
-
-    if (m_Tokens[0].type == TokenType::USE) {
-      UseDatabaseStatementParser parser(m_Tokens);
+  if (m_Tokens[0].type == TokenType::CREATE) {
+    if (m_Tokens.size() > 1 && m_Tokens[1].type == TokenType::DATABASE) {
+      CreateDatabaseStatementParser parser(m_Tokens);
       return parser.parse();
+    } else if (m_Tokens.size() > 1 && m_Tokens[1].type == TokenType::TABLE) {
+      CreateTableStatementParser parser(m_Tokens);
+      return parser.parse();
+    } else {
+      throw std::runtime_error("[Parser] Invalid CREATE statement - expected "
+                               "DATABASE or TABLE keyword");
     }
+  }
+
+  if (m_Tokens[0].type == TokenType::USE) {
+    UseDatabaseStatementParser parser(m_Tokens);
+    return parser.parse();
+  }
 
   throw std::runtime_error("[Parser] Invalid or unsupported query type - " +
                            firstToken.value);

@@ -22,7 +22,8 @@ void InsertStatement::print() const {
   }
   std::cout << "  Values: ";
   for (size_t i = 0; i < values.size(); ++i) {
-    auto val = values[i]->solve();
+    std::unordered_map<std::string, Value> emptyRow;
+    auto val = values[i]->solve(emptyRow);
     std::visit([](const auto &v) {
       using T = std::decay_t<decltype(v)>;
       if constexpr (std::is_same_v<T, std::string>) {

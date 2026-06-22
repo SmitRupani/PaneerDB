@@ -22,6 +22,7 @@ public:
 
 private:
     void executeInsert(class InsertStatement* stmt);
+    void executeSelect(class SelectStatement* stmt);
 
     bool active;
     std::string activeDbName;

@@ -17,9 +17,9 @@ BinaryExpression::~BinaryExpression() {
 AndExpression::AndExpression(Expression *leftA, Expression *rightA)
     : BinaryExpression(leftA, rightA) {}
 
-Value AndExpression::solve() {
-  auto leftResult = left->solve();
-  auto rightResult = right->solve();
+Value AndExpression::solve(const Row& row) {
+  auto leftResult = left->solve(row);
+  auto rightResult = right->solve(row);
 
   auto isTruthy = [](const Value &result) -> bool {
     return std::visit(
@@ -50,9 +50,9 @@ Value AndExpression::solve() {
 EqualityExpression::EqualityExpression(Expression *leftA, Expression *rightA)
     : BinaryExpression(leftA, rightA) {}
 
-Value EqualityExpression::solve() {
-  auto leftResult = left->solve();
-  auto rightResult = right->solve();
+Value EqualityExpression::solve(const Row& row) {
+  auto leftResult = left->solve(row);
+  auto rightResult = right->solve(row);
 
   if (leftResult.index() != rightResult.index()) {
     throw std::runtime_error(
@@ -77,22 +77,25 @@ Value EqualityExpression::solve() {
 LiteralExpression::LiteralExpression(Value &&valueA)
     : value(std::move(valueA)) {}
 
-Value LiteralExpression::solve() { return value; }
+Value LiteralExpression::solve(const Row& row) { return value; }
 
 IdentifierExpression::IdentifierExpression(const std::string &columnNameA)
     : columnName(columnNameA) {}
 
-Value IdentifierExpression::solve() {
-  // TODO: To be implemented
-  return "SHAHI PANEER > KADAHI PANEER";
+Value IdentifierExpression::solve(const Row& row) {
+  auto it = row.find(columnName);
+  if (it == row.end()) {
+    throw std::runtime_error("[Expression] Unknown column: " + columnName);
+  }
+  return it->second;
 }
 
 OrExpression::OrExpression(Expression *leftA, Expression *rightA)
     : BinaryExpression(leftA, rightA) {}
 
-Value OrExpression::solve() {
-  auto leftResult = left->solve();
-  auto rightResult = right->solve();
+Value OrExpression::solve(const Row& row) {
+  auto leftResult = left->solve(row);
+  auto rightResult = right->solve(row);
 
   auto isTruthy = [](const Value &result) -> bool {
     return std::visit(
@@ -117,9 +120,9 @@ Value OrExpression::solve() {
 GreaterExpression::GreaterExpression(Expression *leftA, Expression *rightA)
     : BinaryExpression(leftA, rightA) {}
 
-Value GreaterExpression::solve() {
-  auto l = left->solve();
-  auto r = right->solve();
+Value GreaterExpression::solve(const Row& row) {
+  auto l = left->solve(row);
+  auto r = right->solve(row);
   if (l.index() != r.index()) {
     throw std::runtime_error("[Parser] Comparison type mismatch");
   }
@@ -142,9 +145,9 @@ Value GreaterExpression::solve() {
 LessExpression::LessExpression(Expression *leftA, Expression *rightA)
     : BinaryExpression(leftA, rightA) {}
 
-Value LessExpression::solve() {
-  auto l = left->solve();
-  auto r = right->solve();
+Value LessExpression::solve(const Row& row) {
+  auto l = left->solve(row);
+  auto r = right->solve(row);
   if (l.index() != r.index()) {
     throw std::runtime_error("[Parser] Comparison type mismatch");
   }

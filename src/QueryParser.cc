@@ -139,6 +139,9 @@ void QueryParser::tokenize(const std::string &query) {
       } else if (c == ';') {
         m_Tokens.emplace_back(";", TokenType::END);
         break;
+      } else if (c == '*') {
+        m_Tokens.emplace_back("*", TokenType::STAR);
+        ++i;
       } else if (c == '.') {
         std::string word;
         while (i < query.size() && !isspace(query[i]) && query[i] != ';') {

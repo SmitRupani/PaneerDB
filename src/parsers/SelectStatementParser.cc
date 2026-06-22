@@ -31,6 +31,11 @@ SelectStatement* SelectStatementParser::parse() {
 std::vector<std::string> SelectStatementParser::parseProjection() {
   std::vector<std::string> result;
 
+  if (accept(TokenType::STAR)) {
+    result.push_back("*");
+    return result;
+  }
+
   result.push_back(consume(TokenType::IDENTIFIER).value);
 
   while (accept(TokenType::COMMA)) {

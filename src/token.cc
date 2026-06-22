@@ -46,6 +46,9 @@ std::string Token::getTypeName() const
   case TokenType::DESC:
     return "DESC";
 
+  case TokenType::STAR:
+    return "STAR";
+
   case TokenType::IDENTIFIER:
     return "IDENTIFIER";
 
@@ -114,6 +117,9 @@ std::string Token::getTypeName(TokenType typeA) const
 
   case TokenType::DESC:
     return "DESC";
+
+  case TokenType::STAR:
+    return "STAR";
 
   case TokenType::USE:
     return "USE";

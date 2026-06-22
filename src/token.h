@@ -17,6 +17,7 @@ enum class TokenType {
   INTO,
   VALUES,
   DESC,
+  STAR,
 
   INTEGER,
   VARCHAR,

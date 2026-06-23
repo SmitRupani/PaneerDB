@@ -7,7 +7,6 @@ Catalog::Catalog(BufferPoolManager *bpm) : bpm(bpm) {
   DiskManager *diskManager = bpm->getDiskManager();
 
   if (diskManager->getNextPageId() == 0) {
-    // Database is empty. Allocate Page 0 (Meta) and Page 1 (Catalog)
     page_id_t metaPageId, catalogPageId;
     Page *metaPage = bpm->newPage(&metaPageId);       // Should be 0
     Page *catalogPage = bpm->newPage(&catalogPageId); // Should be 1
@@ -17,14 +16,12 @@ Catalog::Catalog(BufferPoolManager *bpm) : bpm(bpm) {
                    "Catalog(1)\n";
     }
 
-    // Initialize Catalog Page
     SlottedPage sp(catalogPage);
     sp.init();
 
     bpm->unpinPage(metaPageId, true);
     bpm->unpinPage(catalogPageId, true);
   } else {
-    // Load existing catalog from Page 1
     Page *catalogPage = bpm->fetchPage(CATALOG_PAGE_ID);
     if (!catalogPage) {
       std::cerr << "Error: Could not fetch Catalog Page 1\n";
@@ -36,7 +33,7 @@ Catalog::Catalog(BufferPoolManager *bpm) : bpm(bpm) {
     for (uint16_t i = 0; i < slotCount; ++i) {
       std::string tupleData = sp.getTuple(i);
       if (tupleData.empty())
-        continue; // Lazy deleted
+        continue;
 
       size_t offset = 0;
       uint16_t nameLen;
@@ -68,7 +65,6 @@ bool Catalog::createTable(const std::string &tableName, Schema &schema) {
     return false;
   }
 
-  // Allocate first page for table
   page_id_t firstPageId;
   Page *firstPage = bpm->newPage(&firstPageId);
   if (!firstPage) {
@@ -88,14 +84,12 @@ bool Catalog::createTable(const std::string &tableName, Schema &schema) {
   }
   SlottedPage sp(catalogPage);
 
-  // Serialize tuple
   std::string tupleData;
   uint16_t nameLen = tableName.size();
   tupleData.append(reinterpret_cast<const char *>(&nameLen), sizeof(nameLen));
   tupleData.append(tableName);
   tupleData.append(schema.serialize());
 
-  // Insert into SlottedPage
   int32_t slotId = sp.insertTuple(tupleData.data(), tupleData.size());
   if (slotId < 0) {
     std::cerr
@@ -106,8 +100,59 @@ bool Catalog::createTable(const std::string &tableName, Schema &schema) {
 
   bpm->unpinPage(CATALOG_PAGE_ID, true);
 
-  // Add a copy to our in-memory map
   std::string schemaStr = schema.serialize();
+  tables[tableName] = Schema::deserialize(schemaStr);
+
+  return true;
+}
+
+bool Catalog::updateTable(const std::string &tableName, Schema &schema) {
+  if (tables.find(tableName) == tables.end()) {
+    std::cerr << "Table '" << tableName << "' does not exist.\n";
+    return false;
+  }
+
+  Page *catalogPage = bpm->fetchPage(CATALOG_PAGE_ID);
+  if (!catalogPage) {
+    return false;
+  }
+  SlottedPage sp(catalogPage);
+
+  // Find old tuple and delete it
+  uint16_t slotCount = sp.getSlotCount();
+  for (uint16_t i = 0; i < slotCount; ++i) {
+    std::string tupleData = sp.getTuple(i);
+    if (tupleData.empty()) continue;
+
+    size_t offset = 0;
+    uint16_t nameLen;
+    std::memcpy(&nameLen, tupleData.data() + offset, sizeof(nameLen));
+    offset += sizeof(nameLen);
+
+    std::string existingTableName = tupleData.substr(offset, nameLen);
+    if (existingTableName == tableName) {
+      sp.deleteTuple(i);
+      break;
+    }
+  }
+
+  std::string tupleData;
+  uint16_t nameLen = tableName.size();
+  tupleData.append(reinterpret_cast<const char *>(&nameLen), sizeof(nameLen));
+  tupleData.append(tableName);
+  tupleData.append(schema.serialize());
+
+  int32_t slotId = sp.insertTuple(tupleData.data(), tupleData.size());
+  if (slotId < 0) {
+    std::cerr << "Failed to update table schema into catalog page. Page full?\n";
+    bpm->unpinPage(CATALOG_PAGE_ID, false);
+    return false;
+  }
+
+  bpm->unpinPage(CATALOG_PAGE_ID, true);
+
+  std::string schemaStr = schema.serialize();
+  delete tables[tableName];
   tables[tableName] = Schema::deserialize(schemaStr);
 
   return true;

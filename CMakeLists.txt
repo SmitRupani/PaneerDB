@@ -15,6 +15,7 @@ set(PROJECT_SOURCES
     src/storage/BufferPoolManager.cc
     src/catalog/Schema.cc
     src/catalog/Catalog.cc
+    src/index/BPlusTree.cc
 
     src/parsers/StatementParser.cc
     src/parsers/SelectStatementParser.cc

@@ -22,7 +22,9 @@ Schema& Schema::operator=(Schema&& other) noexcept {
     }
     columns = std::move(other.columns);
     firstPageId = other.firstPageId;
+    indexes = std::move(other.indexes);
     other.columns.clear();
+    other.indexes.clear();
   }
   return *this;
 }
@@ -39,6 +41,15 @@ std::string Schema::serialize() const {
   for (const auto* col : columns) {
     std::string colBuf = col->serialize();
     buf.append(colBuf);
+  }
+
+  uint16_t numIndexes = indexes.size();
+  buf.append(reinterpret_cast<const char*>(&numIndexes), sizeof(numIndexes));
+  for (const auto& [colName, rootId] : indexes) {
+    uint32_t nameLen = colName.length();
+    buf.append(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
+    buf.append(colName);
+    buf.append(reinterpret_cast<const char*>(&rootId), sizeof(rootId));
   }
 
   return buf;
@@ -61,7 +72,30 @@ Schema* Schema::deserialize(const std::string& data) {
     columns.push_back(col);
   }
 
-  return new Schema(std::move(columns), firstPageId);
+  Schema* schema = new Schema(std::move(columns), firstPageId);
+
+  uint16_t numIndexes = 0;
+  if (offset < data.size()) {
+    std::memcpy(&numIndexes, data.data() + offset, sizeof(numIndexes));
+    offset += sizeof(numIndexes);
+
+    for (uint16_t i = 0; i < numIndexes; ++i) {
+      uint32_t nameLen;
+      std::memcpy(&nameLen, data.data() + offset, sizeof(nameLen));
+      offset += sizeof(nameLen);
+
+      std::string colName(data.data() + offset, nameLen);
+      offset += nameLen;
+
+      page_id_t rootId;
+      std::memcpy(&rootId, data.data() + offset, sizeof(rootId));
+      offset += sizeof(rootId);
+
+      schema->indexes[colName] = rootId;
+    }
+  }
+
+  return schema;
 }
 
 void Schema::print() const {

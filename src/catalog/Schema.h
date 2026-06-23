@@ -5,6 +5,7 @@
 #include "statements/Column.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 class Schema {
 public:
@@ -26,6 +27,8 @@ public:
 
   std::vector<Column *> columns;
   page_id_t firstPageId;
+  
+  std::unordered_map<std::string, page_id_t> indexes;
 };
 
 #endif // SCHEMA_H

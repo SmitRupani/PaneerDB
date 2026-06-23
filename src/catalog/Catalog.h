@@ -12,6 +12,7 @@ public:
   ~Catalog();
 
   bool createTable(const std::string &tableName, Schema &schema);
+  bool updateTable(const std::string &tableName, Schema &schema);
   Schema *getTable(const std::string &tableName);
   void showTables() const;
 

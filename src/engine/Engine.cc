@@ -10,6 +10,8 @@
 #include "statements/UseDatabaseStatement.h"
 #include "storage/BufferPoolManager.h"
 #include "storage/SlottedPage.h"
+#include "index/BPlusTree.h"
+#include "index/BPlusTreePage.h"
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -56,7 +58,21 @@ void Engine::execute(Statement *statement) {
       break;
     }
     auto createTableStmt = static_cast<CreateTableStatement *>(statement);
+
+    std::unordered_map<std::string, page_id_t> indexes;
+    for (auto* col : createTableStmt->columns) {
+      if (col->type == ColumnType::INTEGER && col->primaryKey) {
+        page_id_t rootId;
+        Page* rootPage = bpm->newPage(&rootId);
+        auto* leaf = reinterpret_cast<BPlusTreeLeafPage*>(rootPage->getData());
+        leaf->init(rootId, -1);
+        bpm->unpinPage(rootId, true);
+        indexes[col->name] = rootId;
+      }
+    }
+
     Schema schema(std::move(createTableStmt->columns));
+    schema.indexes = indexes;
     createTableStmt->columns.clear(); // schema takes ownership
 
     catalog->createTable(createTableStmt->tableName, schema);
@@ -154,6 +170,7 @@ void Engine::executeInsert(InsertStatement *stmt) {
   }
 
   std::string tupleData;
+  std::unordered_map<std::string, int32_t> insertedInts;
 
   for (size_t i = 0; i < insertColumns.size(); ++i) {
     Column *col = insertColumns[i];
@@ -167,6 +184,7 @@ void Engine::executeInsert(InsertStatement *stmt) {
         return;
       }
       int32_t intVal = std::get<int>(val);
+      insertedInts[col->name] = intVal;
       tupleData.append(reinterpret_cast<const char *>(&intVal), sizeof(intVal));
     } else if (col->type == ColumnType::VARCHAR) {
       if (val.index() != 0) { // 0 is std::string
@@ -203,8 +221,26 @@ void Engine::executeInsert(InsertStatement *stmt) {
     SlottedPage sp(page);
     int32_t slotId = sp.insertTuple(tupleData.data(), tupleData.size());
 
+    auto updateIndexes = [&](int32_t sId, page_id_t pId) {
+      bool schemaChanged = false;
+      for (const auto& [colName, rootId] : schema->indexes) {
+        if (insertedInts.count(colName)) {
+           BPlusTree tree(rootId, bpm.get());
+           tree.insert(insertedInts[colName], {pId, sId});
+           if (tree.getRootPageId() != rootId) {
+             schema->indexes[colName] = tree.getRootPageId();
+             schemaChanged = true;
+           }
+        }
+      }
+      if (schemaChanged) {
+        catalog->updateTable(stmt->tableName, *schema);
+      }
+    };
+
     if (slotId >= 0) {
       // Successfully inserted
+      updateIndexes(slotId, currentPageId);
       bpm->unpinPage(currentPageId, true);
       std::cout << "Inserted 1 row into '" << stmt->tableName << "'.\n";
       return;
@@ -242,6 +278,7 @@ void Engine::executeInsert(InsertStatement *stmt) {
         return;
       }
 
+      updateIndexes(slotId, newPageId);
       bpm->unpinPage(newPageId, true);
       std::cout << "Inserted 1 row into '" << stmt->tableName
                 << "' (allocated new page " << newPageId << ").\n";
@@ -290,24 +327,29 @@ void Engine::executeSelect(SelectStatement *stmt) {
     colWidths[i] = headers[i].length();
   }
 
-  // Scan pages
-  page_id_t currentPageId = schema->firstPageId;
-  while (currentPageId != -1) {
-    Page *page = bpm->fetchPage(currentPageId);
-    if (!page) {
-      std::cerr << "Error: Could not fetch data page " << currentPageId
-                << ".\n";
-      return;
+  std::vector<RecordId> indexedRecords;
+  bool useIndex = false;
+
+  if (stmt->filter != nullptr) {
+    if (auto eqExpr = dynamic_cast<EqualityExpression*>(stmt->filter)) {
+      if (auto idExpr = dynamic_cast<IdentifierExpression*>(eqExpr->left)) {
+        if (auto litExpr = dynamic_cast<LiteralExpression*>(eqExpr->right)) {
+          if (schema->indexes.count(idExpr->columnName) && litExpr->value.index() == 1) { // 1 is int
+             useIndex = true;
+             int targetVal = std::get<int>(litExpr->value);
+             BPlusTree tree(schema->indexes[idExpr->columnName], bpm.get());
+             auto res = tree.search(targetVal);
+             if (res.has_value()) {
+               indexedRecords.push_back(res.value());
+             }
+             std::cout << "[Using B+ Tree Index on '" << idExpr->columnName << "']\n";
+          }
+        }
+      }
     }
+  }
 
-    SlottedPage sp(page);
-    uint16_t slotCount = sp.getSlotCount();
-
-    for (slot_id_t i = 0; i < slotCount; ++i) {
-      std::string tupleData = sp.getTuple(i);
-      if (tupleData.empty())
-        continue; // lazy deleted
-
+  auto processTuple = [&](std::string tupleData) -> bool {
       std::unordered_map<std::string, Value> row;
       size_t offset = 0;
 
@@ -344,8 +386,7 @@ void Engine::executeSelect(SelectStatement *stmt) {
               filterVal);
         } catch (const std::exception &e) {
           std::cerr << "Error evaluating filter: " << e.what() << "\n";
-          bpm->unpinPage(page->getPageId(), false);
-          return;
+          return false;
         }
       }
 
@@ -366,10 +407,52 @@ void Engine::executeSelect(SelectStatement *stmt) {
         }
         results.push_back(rowStr);
       }
-    }
+      return true;
+  };
 
-    currentPageId = sp.getNextPageId();
-    bpm->unpinPage(page->getPageId(), false);
+  if (useIndex) {
+    for (const auto& rid : indexedRecords) {
+      Page* page = bpm->fetchPage(rid.pageId);
+      if (page) {
+        SlottedPage sp(page);
+        std::string tupleData = sp.getTuple(rid.slotId);
+        if (!tupleData.empty()) {
+           if (!processTuple(tupleData)) {
+              bpm->unpinPage(rid.pageId, false);
+              return;
+           }
+        }
+        bpm->unpinPage(rid.pageId, false);
+      }
+    }
+  } else {
+    // Scan pages
+    page_id_t currentPageId = schema->firstPageId;
+    while (currentPageId != -1) {
+      Page *page = bpm->fetchPage(currentPageId);
+      if (!page) {
+        std::cerr << "Error: Could not fetch data page " << currentPageId
+                  << ".\n";
+        return;
+      }
+
+      SlottedPage sp(page);
+      uint16_t slotCount = sp.getSlotCount();
+
+      for (slot_id_t i = 0; i < slotCount; ++i) {
+        std::string tupleData = sp.getTuple(i);
+        if (tupleData.empty())
+          continue; // lazy deleted
+
+        if (!processTuple(tupleData)) {
+          bpm->unpinPage(page->getPageId(), false);
+          return;
+        }
+      }
+
+      currentPageId = sp.getNextPageId();
+      bpm->unpinPage(page->getPageId(), false);
+    }
   }
 
   auto printBorder = [&]() {

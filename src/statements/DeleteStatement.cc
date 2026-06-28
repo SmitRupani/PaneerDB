@@ -1,8 +1,9 @@
 #include "DeleteStatement.h"
+#include "Expression.h"
 #include <iostream>
-#include "../Expression.h"
 
-DeleteStatement::DeleteStatement() : Statement(StatementType::DELETE_STATEMENT), filter(nullptr) {}
+DeleteStatement::DeleteStatement()
+    : Statement(StatementType::DELETE_STATEMENT), filter(nullptr) {}
 
 DeleteStatement::~DeleteStatement() {
   if (filter != nullptr) {

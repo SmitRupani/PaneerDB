@@ -52,6 +52,15 @@ std::string Token::getTypeName() const
   case TokenType::DELETE_KW:
     return "DELETE";
 
+  case TokenType::BEGIN_KW:
+    return "BEGIN";
+
+  case TokenType::COMMIT_KW:
+    return "COMMIT";
+
+  case TokenType::ROLLBACK_KW:
+    return "ROLLBACK";
+
   case TokenType::IDENTIFIER:
     return "IDENTIFIER";
 
@@ -132,6 +141,15 @@ std::string Token::getTypeName(TokenType typeA) const
 
   case TokenType::DELETE_KW:
     return "DELETE";
+
+  case TokenType::BEGIN_KW:
+    return "BEGIN";
+
+  case TokenType::COMMIT_KW:
+    return "COMMIT";
+
+  case TokenType::ROLLBACK_KW:
+    return "ROLLBACK";
 
   case TokenType::USE:
     return "USE";

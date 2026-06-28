@@ -18,6 +18,7 @@
 #include "statements/ShowTablesStatement.h"
 #include "parsers/ShowTablesStatementParser.h"
 #include "parsers/DescribeStatementParser.h"
+#include "statements/TransactionStatements.h"
 
 void QueryParser::tokenize(const std::string &query) {
   using std::isspace, std::isalpha, std::isdigit;
@@ -106,6 +107,12 @@ void QueryParser::tokenize(const std::string &query) {
         m_Tokens.emplace_back("NULL", TokenType::NULL_KW);
       } else if (upperWord == "UNIQUE") {
         m_Tokens.emplace_back("UNIQUE", TokenType::UNIQUE);
+      } else if (upperWord == "BEGIN") {
+        m_Tokens.emplace_back("BEGIN", TokenType::BEGIN_KW);
+      } else if (upperWord == "COMMIT") {
+        m_Tokens.emplace_back("COMMIT", TokenType::COMMIT_KW);
+      } else if (upperWord == "ROLLBACK") {
+        m_Tokens.emplace_back("ROLLBACK", TokenType::ROLLBACK_KW);
       } else {
         m_Tokens.emplace_back(word, TokenType::IDENTIFIER);
       }
@@ -217,6 +224,18 @@ Statement *QueryParser::parse() {
   if (m_Tokens[0].type == TokenType::DELETE_KW) {
     DeleteStatementParser parser(m_Tokens);
     return parser.parse();
+  }
+
+  if (m_Tokens[0].type == TokenType::BEGIN_KW) {
+    return new BeginStatement();
+  }
+
+  if (m_Tokens[0].type == TokenType::COMMIT_KW) {
+    return new CommitStatement();
+  }
+
+  if (m_Tokens[0].type == TokenType::ROLLBACK_KW) {
+    return new RollbackStatement();
   }
 
   throw std::runtime_error("[Parser] Invalid or unsupported query type - " +

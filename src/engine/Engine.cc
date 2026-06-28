@@ -16,6 +16,8 @@
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
+#include "concurrency/TransactionManager.h"
+#include "concurrency/LockManager.h"
 
 Engine::Engine() : active(false), activeDbName("") {}
 Engine::~Engine() = default;
@@ -28,6 +30,8 @@ void Engine::useDatabase(const std::string &name) {
   diskManager = std::make_unique<DiskManager>(fileName);
   bpm = std::make_unique<BufferPoolManager>(10, diskManager.get());
   catalog = std::make_unique<Catalog>(bpm.get());
+  lockManager = std::make_unique<LockManager>();
+  txnManager = std::make_unique<TransactionManager>(lockManager.get());
 }
 
 void Engine::createDatabase(const std::string &name) {
@@ -35,7 +39,6 @@ void Engine::createDatabase(const std::string &name) {
   // Instantiating DiskManager will automatically create the file if it doesn't
   // exist
   DiskManager dm(fileName);
-  std::cout << "Created database: " << name << std::endl;
 }
 
 void Engine::execute(Statement *statement) {
@@ -92,8 +95,18 @@ void Engine::execute(Statement *statement) {
       std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
       break;
     }
+    bool auto_commit = false;
+    if (currentTxn == nullptr) {
+      currentTxn = txnManager->Begin();
+      auto_commit = true;
+    }
     auto insertStmt = static_cast<InsertStatement *>(statement);
     executeInsert(insertStmt);
+    if (auto_commit) {
+      txnManager->Commit(currentTxn);
+      delete currentTxn;
+      currentTxn = nullptr;
+    }
     break;
   }
   case Statement::StatementType::DESCRIBE_TABLE: {
@@ -116,8 +129,18 @@ void Engine::execute(Statement *statement) {
       std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
       break;
     }
+    bool auto_commit = false;
+    if (currentTxn == nullptr) {
+      currentTxn = txnManager->Begin();
+      auto_commit = true;
+    }
     auto selectStmt = static_cast<SelectStatement *>(statement);
     executeSelect(selectStmt);
+    if (auto_commit) {
+      txnManager->Commit(currentTxn);
+      delete currentTxn;
+      currentTxn = nullptr;
+    }
     break;
   }
   case Statement::StatementType::DELETE_STATEMENT: {
@@ -125,8 +148,61 @@ void Engine::execute(Statement *statement) {
       std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
       break;
     }
+    bool auto_commit = false;
+    if (currentTxn == nullptr) {
+      currentTxn = txnManager->Begin();
+      auto_commit = true;
+    }
     auto deleteStmt = static_cast<DeleteStatement *>(statement);
     executeDelete(deleteStmt);
+    if (auto_commit) {
+      txnManager->Commit(currentTxn);
+      delete currentTxn;
+      currentTxn = nullptr;
+    }
+    break;
+  }
+  case Statement::StatementType::BEGIN_TRANSACTION: {
+    if (!active) {
+      std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
+      break;
+    }
+    if (currentTxn != nullptr) {
+      std::cerr << "Error: Transaction already in progress.\n";
+      break;
+    }
+    currentTxn = txnManager->Begin();
+    std::cout << "Transaction started.\n";
+    break;
+  }
+  case Statement::StatementType::COMMIT_TRANSACTION: {
+    if (!active) {
+      std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
+      break;
+    }
+    if (currentTxn == nullptr) {
+      std::cerr << "Error: No active transaction.\n";
+      break;
+    }
+    txnManager->Commit(currentTxn);
+    delete currentTxn;
+    currentTxn = nullptr;
+    std::cout << "Transaction committed.\n";
+    break;
+  }
+  case Statement::StatementType::ROLLBACK_TRANSACTION: {
+    if (!active) {
+      std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
+      break;
+    }
+    if (currentTxn == nullptr) {
+      std::cerr << "Error: No active transaction.\n";
+      break;
+    }
+    txnManager->Abort(currentTxn);
+    delete currentTxn;
+    currentTxn = nullptr;
+    std::cout << "Transaction rolled back.\n";
     break;
   }
   default:
@@ -145,6 +221,11 @@ std::string Engine::getActiveDatabase() const {
 }
 
 void Engine::executeInsert(InsertStatement *stmt) {
+  if (!lockManager->LockTable(currentTxn, LockMode::EXCLUSIVE, stmt->tableName)) {
+    std::cerr << "Error: Could not acquire lock for insert.\n";
+    return;
+  }
+
   Schema *schema = catalog->getTable(stmt->tableName);
   if (!schema) {
     std::cerr << "Error: Table '" << stmt->tableName << "' does not exist.\n";
@@ -298,6 +379,11 @@ void Engine::executeInsert(InsertStatement *stmt) {
 }
 
 void Engine::executeSelect(SelectStatement *stmt) {
+  if (!lockManager->LockTable(currentTxn, LockMode::SHARED, stmt->tableName)) {
+    std::cerr << "Error: Could not acquire lock for select.\n";
+    return;
+  }
+
   Schema *schema = catalog->getTable(stmt->tableName);
   if (!schema) {
     std::cerr << "Error: Table '" << stmt->tableName << "' does not exist.\n";
@@ -506,6 +592,11 @@ void Engine::executeSelect(SelectStatement *stmt) {
 }
 
 void Engine::executeDelete(DeleteStatement *stmt) {
+  if (!lockManager->LockTable(currentTxn, LockMode::EXCLUSIVE, stmt->tableName)) {
+    std::cerr << "Error: Could not acquire lock for delete.\n";
+    return;
+  }
+
   Schema *schema = catalog->getTable(stmt->tableName);
   if (!schema) {
     std::cerr << "Error: Table '" << stmt->tableName << "' does not exist.\n";

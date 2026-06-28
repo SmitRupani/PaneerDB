@@ -10,6 +10,7 @@ set(PROJECT_SOURCES
     src/QueryParser.cc
     src/Expression.cc
     src/engine/Engine.cc
+    src/concurrency/LockManager.cc
     src/DiskManager/DiskManager.cc
     src/storage/SlottedPage.cc
     src/storage/BufferPoolManager.cc
@@ -57,3 +58,39 @@ set(RedBlackTree_SOURCES
 )
 
 add_executable(RedBlackTree ${RedBlackTree_SOURCES})
+
+# Transaction test
+set(TransactionTest_SOURCES
+    src/tests/TransactionTest.cc
+    src/concurrency/LockManager.cc
+    src/engine/Engine.cc
+    src/DiskManager/DiskManager.cc
+    src/storage/SlottedPage.cc
+    src/storage/BufferPoolManager.cc
+    src/catalog/Schema.cc
+    src/catalog/Catalog.cc
+    src/index/BPlusTree.cc
+    src/QueryParser.cc
+    src/token.cc
+    src/Expression.cc
+    src/parsers/StatementParser.cc
+    src/parsers/SelectStatementParser.cc
+    src/parsers/CreateDatabaseStatementParser.cc
+    src/parsers/CreateTableStatementParser.cc
+    src/parsers/UseDatabaseStatementParser.cc
+    src/parsers/InsertStatementParser.cc
+    src/parsers/DescribeStatementParser.cc
+    src/parsers/ShowTablesStatementParser.cc
+    src/parsers/DeleteStatementParser.cc
+    src/statements/SelectStatement.cc
+    src/statements/CreateDatabaseStatement.cc
+    src/statements/CreateTableStatement.cc
+    src/statements/UseDatabaseStatement.cc
+    src/statements/Column.cc
+    src/statements/InsertStatement.cc
+    src/statements/ShowTablesStatement.cc
+    src/statements/DeleteStatement.cc
+)
+
+add_executable(TransactionTest ${TransactionTest_SOURCES})
+target_include_directories(TransactionTest PRIVATE src)

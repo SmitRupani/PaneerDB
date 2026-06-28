@@ -19,6 +19,9 @@ enum class TokenType {
   DESC,
   STAR,
   DELETE_KW,
+  BEGIN_KW,
+  COMMIT_KW,
+  ROLLBACK_KW,
 
   INTEGER,
   VARCHAR,

@@ -25,6 +25,7 @@ set(PROJECT_SOURCES
     src/parsers/InsertStatementParser.cc
     src/parsers/DescribeStatementParser.cc
     src/parsers/ShowTablesStatementParser.cc
+    src/parsers/DeleteStatementParser.cc
 
     src/statements/SelectStatement.cc
     src/statements/CreateDatabaseStatement.cc
@@ -33,6 +34,7 @@ set(PROJECT_SOURCES
     src/statements/Column.cc
     src/statements/InsertStatement.cc
     src/statements/ShowTablesStatement.cc
+    src/statements/DeleteStatement.cc
 )
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})

@@ -5,6 +5,7 @@
 #include <memory>
 
 class Statement;
+class DeleteStatement;
 class DiskManager;
 class BufferPoolManager;
 class Catalog;
@@ -23,6 +24,7 @@ public:
 private:
     void executeInsert(class InsertStatement* stmt);
     void executeSelect(class SelectStatement* stmt);
+    void executeDelete(class DeleteStatement* stmt);
 
     bool active;
     std::string activeDbName;

@@ -18,6 +18,7 @@ enum class TokenType {
   VALUES,
   DESC,
   STAR,
+  DELETE_KW,
 
   INTEGER,
   VARCHAR,

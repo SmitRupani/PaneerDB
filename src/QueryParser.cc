@@ -10,6 +10,7 @@
 #include <parsers/InsertStatementParser.h>
 #include <parsers/SelectStatementParser.h>
 #include <parsers/UseDatabaseStatementParser.h>
+#include <parsers/DeleteStatementParser.h>
 #include <stdexcept>
 #include <string>
 #include <token.h>
@@ -81,6 +82,8 @@ void QueryParser::tokenize(const std::string &query) {
         m_Tokens.emplace_back("TABLES", TokenType::TABLES);
       } else if (upperWord == "TABLE") {
         m_Tokens.emplace_back("TABLE", TokenType::TABLE);
+      } else if (upperWord == "DELETE") {
+        m_Tokens.emplace_back("DELETE", TokenType::DELETE_KW);
       } else if (upperWord == "INSERT") {
         m_Tokens.emplace_back("INSERT", TokenType::INSERT);
       } else if (upperWord == "INTO") {
@@ -208,6 +211,11 @@ Statement *QueryParser::parse() {
 
   if (m_Tokens[0].type == TokenType::DESC) {
     DescribeStatementParser parser(m_Tokens);
+    return parser.parse();
+  }
+
+  if (m_Tokens[0].type == TokenType::DELETE_KW) {
+    DeleteStatementParser parser(m_Tokens);
     return parser.parse();
   }
 

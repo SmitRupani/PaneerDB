@@ -6,6 +6,7 @@
 #include "statements/DescribeStatement.h"
 #include "statements/InsertStatement.h"
 #include "statements/SelectStatement.h"
+#include "statements/DeleteStatement.h"
 #include "statements/Statement.h"
 #include "statements/UseDatabaseStatement.h"
 #include "storage/BufferPoolManager.h"
@@ -117,6 +118,15 @@ void Engine::execute(Statement *statement) {
     }
     auto selectStmt = static_cast<SelectStatement *>(statement);
     executeSelect(selectStmt);
+    break;
+  }
+  case Statement::StatementType::DELETE_STATEMENT: {
+    if (!active) {
+      std::cerr << "Error: No database active. Use 'USE DATABASE' first.\n";
+      break;
+    }
+    auto deleteStmt = static_cast<DeleteStatement *>(statement);
+    executeDelete(deleteStmt);
     break;
   }
   default:
@@ -493,4 +503,148 @@ void Engine::executeSelect(SelectStatement *stmt) {
   }
 
   std::cout << (results.size() - 1) << " rows in set.\n";
+}
+
+void Engine::executeDelete(DeleteStatement *stmt) {
+  Schema *schema = catalog->getTable(stmt->tableName);
+  if (!schema) {
+    std::cerr << "Error: Table '" << stmt->tableName << "' does not exist.\n";
+    return;
+  }
+
+  int deletedCount = 0;
+  std::vector<RecordId> indexedRecords;
+  bool useIndex = false;
+
+  if (stmt->filter != nullptr) {
+    if (auto eqExpr = dynamic_cast<EqualityExpression*>(stmt->filter)) {
+      if (auto idExpr = dynamic_cast<IdentifierExpression*>(eqExpr->left)) {
+        if (auto litExpr = dynamic_cast<LiteralExpression*>(eqExpr->right)) {
+          if (schema->indexes.count(idExpr->columnName) && litExpr->value.index() == 1) { // 1 is int
+             useIndex = true;
+             int targetVal = std::get<int>(litExpr->value);
+             BPlusTree tree(schema->indexes[idExpr->columnName], bpm.get());
+             auto res = tree.search(targetVal);
+             if (res.has_value()) {
+               indexedRecords.push_back(res.value());
+             }
+          }
+        }
+      }
+    }
+  }
+
+  auto processTuple = [&](std::string tupleData, page_id_t pageId, int32_t slotId, SlottedPage& sp) -> bool {
+      std::unordered_map<std::string, Value> row;
+      size_t offset = 0;
+
+      for (auto *col : schema->columns) {
+        if (col->type == ColumnType::INTEGER) {
+          int32_t intVal;
+          std::memcpy(&intVal, tupleData.data() + offset, sizeof(int32_t));
+          offset += sizeof(int32_t);
+          row[col->name] = intVal;
+        } else if (col->type == ColumnType::VARCHAR) {
+          uint32_t strLen;
+          std::memcpy(&strLen, tupleData.data() + offset, sizeof(uint32_t));
+          offset += sizeof(uint32_t);
+          std::string strVal(tupleData.data() + offset, strLen);
+          offset += strLen;
+          row[col->name] = strVal;
+        }
+      }
+
+      bool matches = true;
+      if (stmt->filter != nullptr) {
+        try {
+          Value filterVal = stmt->filter->solve(row);
+          matches = std::visit(
+              [](const auto &v) -> bool {
+                using T = std::decay_t<decltype(v)>;
+                if constexpr (std::is_same_v<T, bool>)
+                  return v;
+                else if constexpr (std::is_same_v<T, std::string>)
+                  return !v.empty();
+                else if constexpr (std::is_same_v<T, int>)
+                  return v > 0;
+              },
+              filterVal);
+        } catch (const std::exception &e) {
+          std::cerr << "Error evaluating filter: " << e.what() << "\n";
+          return false;
+        }
+      }
+
+      if (matches) {
+        sp.deleteTuple(slotId);
+        deletedCount++;
+        
+        bool schemaChanged = false;
+        for (const auto& [colName, rootId] : schema->indexes) {
+          if (row.count(colName) && row[colName].index() == 1) { // 1 is int
+             BPlusTree tree(rootId, bpm.get());
+             tree.remove(std::get<int>(row[colName]));
+             if (tree.getRootPageId() != rootId) {
+               schema->indexes[colName] = tree.getRootPageId();
+               schemaChanged = true;
+             }
+          }
+        }
+        if (schemaChanged) {
+          catalog->updateTable(stmt->tableName, *schema);
+        }
+      }
+      return true;
+  };
+
+  if (useIndex) {
+    for (const auto& rid : indexedRecords) {
+      Page* page = bpm->fetchPage(rid.pageId);
+      if (page) {
+        SlottedPage sp(page);
+        std::string tupleData = sp.getTuple(rid.slotId);
+        if (!tupleData.empty()) {
+           bool ok = processTuple(tupleData, rid.pageId, rid.slotId, sp);
+           if (!ok) {
+              bpm->unpinPage(rid.pageId, false);
+              return;
+           }
+        }
+        bpm->unpinPage(rid.pageId, true);
+      }
+    }
+  } else {
+    page_id_t currentPageId = schema->firstPageId;
+    while (currentPageId != -1) {
+      Page *page = bpm->fetchPage(currentPageId);
+      if (!page) {
+        std::cerr << "Error: Could not fetch data page " << currentPageId << ".\n";
+        return;
+      }
+
+      SlottedPage sp(page);
+      uint16_t slotCount = sp.getSlotCount();
+      bool modified = false;
+
+      for (slot_id_t i = 0; i < slotCount; ++i) {
+        std::string tupleData = sp.getTuple(i);
+        if (tupleData.empty())
+          continue;
+
+        int prevDelCount = deletedCount;
+        if (!processTuple(tupleData, currentPageId, i, sp)) {
+          bpm->unpinPage(page->getPageId(), modified);
+          return;
+        }
+        if (deletedCount > prevDelCount) {
+            modified = true;
+        }
+      }
+
+      currentPageId = sp.getNextPageId();
+      bpm->unpinPage(page->getPageId(), modified);
+    }
+  }
+
+  std::cout << "Query OK, " << deletedCount << " rows affected.\n";
 }

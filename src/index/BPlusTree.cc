@@ -61,6 +61,38 @@ std::optional<RecordId> BPlusTree::search(int key) {
   return result;
 }
 
+bool BPlusTree::remove(int key) {
+  page_id_t leafPageId = findLeafPage(key);
+  if (leafPageId == -1) return false;
+
+  Page *page = bpm->fetchPage(leafPageId);
+  if (!page) return false;
+
+  auto *leaf = reinterpret_cast<BPlusTreeLeafPage *>(page->getData());
+
+  bool found = false;
+  uint32_t removeIdx = 0;
+  for (uint32_t i = 0; i < leaf->header.size; ++i) {
+    if (leaf->array[i].key == key) {
+      found = true;
+      removeIdx = i;
+      break;
+    }
+  }
+
+  if (found) {
+    for (uint32_t i = removeIdx; i < leaf->header.size - 1; ++i) {
+      leaf->array[i] = leaf->array[i + 1];
+    }
+    leaf->header.size--;
+    bpm->unpinPage(leafPageId, true);
+    return true;
+  }
+
+  bpm->unpinPage(leafPageId, false);
+  return false;
+}
+
 bool BPlusTree::insert(int key, const RecordId &value) {
   if (search(key).has_value()) {
     return false;

@@ -12,6 +12,7 @@ public:
 
   bool insert(int key, const RecordId &value);
   std::optional<RecordId> search(int key);
+  bool remove(int key);
 
   page_id_t getRootPageId() const { return rootPageId; }
 
